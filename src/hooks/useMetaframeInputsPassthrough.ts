@@ -8,15 +8,12 @@ import { Options } from "/@/components/PanelOptions";
 export const useMetaframeInputsPassthrough: () => void = () => {
   const metaframeBlob = useMetaframe();
   const addFile = useFileStore((state) => state.addFile);
-  const [options] = useHashParamJson<Options>(
-    "options"
-  );
+  const [options] = useHashParamJson<Options>("options", {});
 
   useEffect(() => {
     if (!metaframeBlob?.metaframe) {
       return;
     }
-
 
     const metaframe: Metaframe = metaframeBlob?.metaframe;
     return metaframe.onInputs((inputs) => {

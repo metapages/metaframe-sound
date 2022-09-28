@@ -1,12 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
 import {
-  Box,
-  Hide,
   HStack,
   IconButton,
   Show,
   Table,
-  TableCaption,
   TableContainer,
   Tbody,
   Td,
@@ -23,7 +20,6 @@ import {
   CheckIcon,
   CopyIcon,
   DeleteIcon,
-  DownloadIcon,
   WarningTwoIcon,
 } from "@chakra-ui/icons";
 import prettyBytes from "pretty-bytes";
@@ -35,7 +31,7 @@ import { useSendOutput } from "../hooks/useSendOutputs";
 const maxWidthForColumnCompute = 1000;
 
 export const FileList: React.FC = () => {
-  const [options] = useHashParamJson<Options>("options");
+  const [options] = useHashParamJson<Options>("options", {});
   const syncCachedFiles = useFileStore((state) => state.syncCachedFiles);
   const files = useFileStore((state) => state.files);
 
