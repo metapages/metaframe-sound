@@ -20,6 +20,8 @@ import {
   CheckIcon,
   CopyIcon,
   DeleteIcon,
+  DownloadIcon,
+  QuestionIcon,
   WarningTwoIcon,
 } from "@chakra-ui/icons";
 import prettyBytes from "pretty-bytes";
@@ -27,8 +29,6 @@ import { FileBlob } from "/@/components/FileBlob";
 import { Options } from "/@/components/PanelOptions";
 import { useHashParamJson } from "@metapages/hash-query";
 import { useSendOutput } from "../hooks/useSendOutputs";
-
-const maxWidthForColumnCompute = 1000;
 
 export const FileList: React.FC = () => {
   const [options] = useHashParamJson<Options>("options", {});
@@ -49,14 +49,6 @@ export const FileList: React.FC = () => {
     // }
   }, []);
 
-  const columns =
-    5 +
-    (options.pausedOutputs ? 1 : 0) +
-    (options.showSizes ? 1 : 0) +
-    (options.showTimeArrived ? 1 : 0);
-  const pixelsPerColumn = Math.floor(maxWidthForColumnCompute / columns);
-  let column = 1;
-
   return (
     <HStack>
       <TableContainer>
@@ -64,36 +56,15 @@ export const FileList: React.FC = () => {
           {/* <TableCaption>Inputs</TableCaption> */}
           <Thead>
             <Tr>
-              {options.pausedOutputs ? (
-                <Th id={`c${column++}`}></Th>
-              ) : undefined}
-              <Th id={`c${column++}`}>Name</Th>
-              {options.showSizes ? (
-                <Th id={`c${column++}`}>Size</Th>
-              ) : undefined}
-              {options.showPreviews ? (
-                <Th id={`c${column++}`}>Preview</Th>
-              ) : undefined}
-
-              {options.showTimeArrived ? (
-                <Th id={`c${column++}`}>Arrived</Th>
-              ) : undefined}
-
-              <Show breakpoint={`(min-width: ${pixelsPerColumn * column++}px)`}>
-                <Th>Send</Th>
-              </Show>
-
-              <Show breakpoint={`(min-width: ${pixelsPerColumn * column++}px)`}>
-                <Th>Delete</Th>
-              </Show>
-
-              <Show breakpoint={`(min-width: ${pixelsPerColumn * column++}px)`}>
-                <Th>Local cache</Th>
-              </Show>
-
-              {/* <Show breakpoint={`(min-width: ${pixelsPerColumn * column++}px)`}>
-                <Th>Download</Th>
-              </Show> */}
+              {options.pausedOutputs ? <Th></Th> : undefined}
+              <Th>Name</Th>
+              {options.showSizes ? <Th>Size</Th> : undefined}
+              {options.showPreviews ? <Th>Preview</Th> : undefined}
+              {options.showTimeArrived ? <Th>Arrived</Th> : undefined}
+              <Th>Send</Th>
+              {options.showDeleteButton ? <Th>Delete</Th> : undefined}
+              {options.showLocalCache ? <Th>Local cache</Th> : undefined}
+              {options.hideDownloads ? undefined : <Th>Download</Th>}
             </Tr>
           </Thead>
           <Tbody>
@@ -123,15 +94,14 @@ const FileLineItem: React.FC<{
   const send = useSendOutput(file.name);
   const deleteFile = useFileStore((state) => state.deleteFile);
   const cacheFile = useFileStore((state) => state.cacheFile);
+  const getFileBlob = useFileStore((state) => state.getFileBlob);
   const copyFileToClipboard = useFileStore(
     (state) => state.copyFileToClipboard
   );
   const toast = useToast();
 
-  // const getFile = useFileStore((state) => state.getFile);
-  const [objectUrl, setObjectUrl] = useState<string | undefined>();
   const copyClipboard = useCallback(async () => {
-    await copyFileToClipboard(file);
+    await copyFileToClipboard(file.name);
     toast({
       position: "top",
       title: "Copied to clipboard",
@@ -141,88 +111,94 @@ const FileLineItem: React.FC<{
     });
   }, [file, copyFileToClipboard, toast]);
 
-  useEffect(() => {
-    let cancelled = false;
-    let objectUrl: string | undefined;
-    (async () => {
-      try {
-        // const file = await getFile(name);
-        // if (cancelled) {
-        //   return;
-        // }
-        // objectUrl = URL.createObjectURL(file);
-        // setObjectUrl(objectUrl);
-      } catch (err) {
-        console.error(err);
-      }
-    })();
-    return () => {
-      cancelled = true;
-      if (objectUrl) {
-        // cleanup
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
-  }, [name, setObjectUrl]);
+  const refreshSize = useCallback(() => {
+    getFileBlob(file.name);
+  }, [file.name, getFileBlob]);
 
-  const columns =
-    5 +
-    (options.pausedOutputs ? 1 : 0) +
-    (options.showSizes ? 1 : 0) +
-    (options.showTimeArrived ? 1 : 0);
-  const pixelsPerColumn = Math.floor(maxWidthForColumnCompute / columns);
-  let column = 1;
+  const clickDownload = useCallback(async () => {
+    const fileWithBlob = await getFileBlob(file.name);
+    const fileBlob = fileWithBlob.file!;
+    let objectUrl: string | undefined;
+    try {
+      objectUrl = URL.createObjectURL(fileBlob);
+      const link = document.createElement("a");
+      link.download = fileBlob.name;
+      link.href = objectUrl;
+      link.click();
+      setTimeout(() => {
+        URL.revokeObjectURL(objectUrl!);
+      }, 1);
+    } catch (err) {
+      console.error(err);
+    }
+  }, [getFileBlob, file.name]);
 
   return (
     <Tr>
       {options.pausedOutputs ? (
-        <Td id={`c${column++}`}>
+        <Td>
           <WarningTwoIcon color="red" /> Paused outputs
         </Td>
       ) : undefined}
 
-      <Td id={`c${column++}`}>{name}</Td>
+      <Td>{name}</Td>
 
       {options.showSizes ? (
-        <Td id={`c${column++}`}>
-          {file.value ? prettyBytes(JSON.stringify(file.value).length) : 0}
+        <Td>
+          {file.size !== undefined ? (
+            prettyBytes(file.size)
+          ) : (
+            <IconButton
+              aria-label="refresh size"
+              icon={<QuestionIcon />}
+              onClick={refreshSize}
+            />
+          )}
         </Td>
       ) : undefined}
 
+      {/* The field '_s:true' means the file is a serialized blob
+            so we cannot copy binary  */}
       {options.showPreviews ? (
-        <Td id={`c${column++}`}>
-          <Textarea
-            readOnly
-            resize="both"
-            value={
-              file.value
-                ? JSON.stringify(file.value).substring(0, 100000)
-                : undefined
-            }
-          />
-          <IconButton
-            onClick={copyClipboard}
-            aria-label="copy"
-            icon={<CopyIcon />}
-          />
+        <Td>
+          {file.value === undefined ||
+          file.value instanceof Blob ||
+          file.value?._s === true ? (
+            "binary"
+          ) : (
+            <>
+              <Textarea
+                readOnly
+                resize="both"
+                value={
+                  file.value
+                    ? JSON.stringify(file.value).substring(0, 100000)
+                    : undefined
+                }
+              />
+              <IconButton
+                onClick={copyClipboard}
+                aria-label="copy"
+                icon={<CopyIcon />}
+              />
+            </>
+          )}
         </Td>
       ) : undefined}
 
       {options.showTimeArrived ? (
-        <Td id={`c${column++}`}>{file?.arrived?.toLocaleTimeString() ?? ""}</Td>
+        <Td>{file?.arrived?.toLocaleTimeString() ?? ""}</Td>
       ) : undefined}
 
-      <Show breakpoint={`(min-width: ${pixelsPerColumn * column++}px)`}>
-        <Td>
-          <IconButton
-            aria-label="send"
-            onClick={send}
-            icon={<ArrowForwardIcon />}
-          />
-        </Td>
-      </Show>
+      <Td>
+        <IconButton
+          aria-label="send"
+          onClick={send}
+          icon={<ArrowForwardIcon />}
+        />
+      </Td>
 
-      <Show breakpoint={`(min-width: ${pixelsPerColumn * column++}px)`}>
+      {options.showDeleteButton ? (
         <Td>
           <IconButton
             aria-label="delete"
@@ -230,9 +206,9 @@ const FileLineItem: React.FC<{
             icon={<DeleteIcon />}
           />
         </Td>
-      </Show>
+      ) : undefined}
 
-      <Show breakpoint={`(min-width: ${pixelsPerColumn * column++}px)`}>
+      {options.showLocalCache ? (
         <Td>
           {cached ? (
             <CheckIcon color="black" />
@@ -244,25 +220,17 @@ const FileLineItem: React.FC<{
             />
           )}
         </Td>
-      </Show>
+      ) : undefined}
 
-      {/* <Show breakpoint={`(min-width: ${pixelsPerColumn * column++}px)`}>
+      {options.hideDownloads ? undefined : (
         <Td>
           <IconButton
             aria-label="download"
             icon={<DownloadIcon />}
-            onClick={() => {
-              if (!objectUrl) {
-                return;
-              }
-              const link = document.createElement("a");
-              link.download = `download.txt`;
-              link.href = objectUrl;
-              link.click();
-            }}
+            onClick={clickDownload}
           />
         </Td>
-      </Show> */}
+      )}
     </Tr>
   );
 };

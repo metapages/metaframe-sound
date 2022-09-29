@@ -1,13 +1,22 @@
 import create from "zustand";
 import localForage from "localforage";
 import { FileBlob } from "/@/components/FileBlob";
+import {
+  possiblyDeserializeDatarefToValue,
+  possiblySerializeValueToDataref,
+} from "@metapages/metapage";
 
 interface FilesState {
   files: FileBlob[];
   addFile: (file: FileBlob) => void;
   setFiles: (files: FileBlob[]) => void;
+  /**
+   * This returns the FileBlob (which you may already have)
+   * but with the File field populated.
+   * This could be maybe clearer.
+   */
   getFileBlob: (filename: string) => Promise<FileBlob>;
-  copyFileToClipboard: (file: FileBlob) => Promise<void>;
+  copyFileToClipboard: (filename: string) => Promise<void>;
   cacheFile: (file: FileBlob) => void;
   syncCachedFiles: () => void;
 
@@ -28,33 +37,45 @@ export const useFileStore = create<FilesState>((set, get) => {
       if (!fileBlob) {
         throw new Error("File not found");
       }
-      if (fileBlob.value !== undefined) {
-        return fileBlob;
-      }
 
-      if (!fileBlob.cached) {
-        throw `File ${filename} is not cached`;
-      }
+      let changed = false;
 
-      const valueFromCache: any | undefined | null = await localForage.getItem(
-        fileBlob.name
-      );
-      if (valueFromCache !== undefined) {
+      if (fileBlob.cached && fileBlob.value === undefined) {
+        const valueFromCache: any | undefined | null =
+          await localForage.getItem(fileBlob.name);
         fileBlob.cached = true;
         fileBlob.value = valueFromCache;
-        // trigger updates
-        set((state) => ({
-          files: [...get().files],
-        }));
-
-        return fileBlob;
+        changed = true;
       }
 
-      throw `File not found: ${filename}`;
+      // maybe we just uploaded this
+      if (fileBlob.value === undefined && fileBlob.file) {
+        fileBlob.value = await possiblySerializeValueToDataref(fileBlob.file);
+        changed = true;
+      }
+
+      // convert to file
+      if (fileBlob.value !== undefined && !fileBlob.file) {
+        fileBlob.file = possiblyDeserializeDatarefToValue(fileBlob.value);
+        if (!(fileBlob.file instanceof Blob)) {
+          fileBlob.file = new File([JSON.stringify(fileBlob.value)], filename, {
+            type: "application/json",
+          });
+        }
+        fileBlob.size = fileBlob.file.size;
+        changed = true;
+      }
+
+      // everything is deserialized etc
+      if (changed) {
+        // trigger updates
+        get().addFile(fileBlob);
+      }
+      return fileBlob;
     },
 
-    copyFileToClipboard: async (file: FileBlob) => {
-      const blob = await get().getFileBlob(file.name);
+    copyFileToClipboard: async (filename: string) => {
+      const blob = await get().getFileBlob(filename);
       navigator.clipboard.writeText(blob.value);
     },
 
@@ -101,7 +122,10 @@ export const useFileStore = create<FilesState>((set, get) => {
     addFile: async (file: FileBlob) => {
       set((state) => ({
         // overwrite if already exists
-        files: [...state.files.filter((f) => f.name !== file.name), file],
+        files: [
+          ...state.files.filter((f) => f.name !== file.name),
+          { ...file },
+        ],
       }));
     },
 

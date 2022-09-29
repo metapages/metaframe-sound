@@ -22,11 +22,12 @@
   "dependencies": {
     "@chakra-ui/icons": "^2.0.10",
     "@chakra-ui/react": "^2.3.4",
+    "@dropzone-ui/react": "^6.7.14",
     "@emotion/react": "^11.10.4",
     "@emotion/styled": "^11.10.4",
     "@metapages/hash-query": "^0.4.5",
     "@metapages/metaframe-hook": "^1.0.11",
-    "@metapages/metapage": "^0.13.5",
+    "@metapages/metapage": "^0.13.6",
     "@types/localforage": "^0.0.34",
     "formik": "^2.2.9",
     "framer-motion": "^7.3.6",

@@ -11,6 +11,9 @@ export type Options = {
   showPreviews?: boolean;
   showTimeArrived?: boolean;
   pausedOutputs?: boolean;
+  hideDownloads?: boolean;
+  showDeleteButton?: boolean;
+  showLocalCache?: boolean;
 };
 
 const descriptions = {
@@ -19,7 +22,11 @@ const descriptions = {
   showMessagesPerSec: "Show messages/second",
   showPreviews: "Show previews (limited to 100k characters)",
   showTimeArrived: "Show time arrived",
+  showLocalCache: "Show local cache button",
   pausedOutputs: "Pause outputs",
+  hideDownloads: "Hide download button",
+  showDeleteButton: "Show delete button",
+
 };
 
 export const defaultOptions: Options = {
@@ -29,6 +36,9 @@ export const defaultOptions: Options = {
   showPreviews: false,
   pausedOutputs: false,
   showTimeArrived: false,
+  showDeleteButton: false,
+  hideDownloads: false,
+  showLocalCache: false,
 };
 
 const validationSchema = yup.object({
@@ -38,6 +48,9 @@ const validationSchema = yup.object({
   showPreviews: yup.boolean().optional(),
   pausedOutputs: yup.boolean().optional(),
   showTimeArrived: yup.boolean().optional(),
+  hideDownloads: yup.boolean().optional(),
+  showDeleteButton: yup.boolean().optional(),
+  showLocalCache: yup.boolean().optional(),
 });
 
 interface FormType extends yup.InferType<typeof validationSchema> {}

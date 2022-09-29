@@ -25,14 +25,22 @@ export const useMetaframeInputsPassthrough: () => void = () => {
 
         // then display them in the UI
         Object.entries(inputs).forEach(([key, value]) => {
+          const size: number | undefined = options.showSizes
+            ? value === null
+              ? 0
+              : typeof value === "string"
+              ? (value as string).length
+              : JSON.stringify(value).length
+            : undefined;
           addFile({
             name: key,
             value,
             cached: false,
             arrived: new Date(),
+            size,
           });
         });
       }
     });
-  }, [metaframeBlob?.metaframe, options?.pausedOutputs]);
+  }, [metaframeBlob?.metaframe, options]);
 };

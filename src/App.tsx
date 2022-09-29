@@ -9,14 +9,15 @@ import {
   TabPanels,
   Tabs,
 } from "@chakra-ui/react";
-import { HamburgerIcon, ViewIcon, EditIcon, InfoIcon } from "@chakra-ui/icons";
+import { HamburgerIcon, ViewIcon, EditIcon, InfoIcon, AddIcon } from "@chakra-ui/icons";
 import { useHashParamBoolean } from "@metapages/hash-query";
 import { useCallback } from "react";
 import { PanelHelp } from "/@/components/PanelHelp";
 import { PanelOptions } from "/@/components/PanelOptions";
 import { PanelMain } from "/@/components/PanelMain";
-import "/@/app.css";
+import { PanelUpload } from "/@/components/PanelUpload";
 import { useMetaframeInputsPassthrough } from "/@/hooks/useMetaframeInputsPassthrough";
+import "/@/app.css";
 
 export const App: React.FC = () => {
   const [hideMenu, sethideMenu] = useHashParamBoolean("hidemenu");
@@ -56,6 +57,9 @@ export const App: React.FC = () => {
           <ViewIcon /> &nbsp; Inputs
         </Tab>
         <Tab>
+          <AddIcon /> &nbsp; Upload
+        </Tab>
+        <Tab>
           <EditIcon /> &nbsp; Options
         </Tab>
         <Tab>
@@ -68,6 +72,9 @@ export const App: React.FC = () => {
       <TabPanels>
         <TabPanel>
           <PanelMain />
+        </TabPanel>
+        <TabPanel>
+          <PanelUpload />
         </TabPanel>
         <TabPanel>
           <PanelOptions />
