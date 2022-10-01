@@ -6,8 +6,8 @@ import { useHashParamJson } from "@metapages/hash-query";
 
 export type Options = {
   showSizes?: boolean;
-  showBitRate?: boolean;
-  showMessagesPerSec?: boolean;
+  // showBitRate?: boolean;
+  // showMessagesPerSec?: boolean;
   showPreviews?: boolean;
   showTimeArrived?: boolean;
   pausedOutputs?: boolean;
@@ -18,8 +18,8 @@ export type Options = {
 
 const descriptions = {
   showSizes: "Show message size",
-  showBitRate: "Show bit rate (e.g. Mb/s)",
-  showMessagesPerSec: "Show messages/second",
+  // showBitRate: "Show bit rate (e.g. Mb/s)",
+  // showMessagesPerSec: "Show messages/second",
   showPreviews: "Show previews (limited to 100k characters)",
   showTimeArrived: "Show time arrived",
   showLocalCache: "Show local cache button",
@@ -31,8 +31,8 @@ const descriptions = {
 
 export const defaultOptions: Options = {
   showSizes: false,
-  showBitRate: false,
-  showMessagesPerSec: false,
+  // showBitRate: false,
+  // showMessagesPerSec: false,
   showPreviews: false,
   pausedOutputs: false,
   showTimeArrived: false,

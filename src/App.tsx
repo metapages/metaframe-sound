@@ -9,8 +9,14 @@ import {
   TabPanels,
   Tabs,
 } from "@chakra-ui/react";
-import { HamburgerIcon, ViewIcon, EditIcon, InfoIcon, AddIcon } from "@chakra-ui/icons";
-import { useHashParamBoolean } from "@metapages/hash-query";
+import {
+  HamburgerIcon,
+  ViewIcon,
+  EditIcon,
+  InfoIcon,
+  AddIcon,
+} from "@chakra-ui/icons";
+import { useHashParamBoolean, useHashParamInt } from "@metapages/hash-query";
 import { useCallback } from "react";
 import { PanelHelp } from "/@/components/PanelHelp";
 import { PanelOptions } from "/@/components/PanelOptions";
@@ -21,6 +27,7 @@ import "/@/app.css";
 
 export const App: React.FC = () => {
   const [hideMenu, sethideMenu] = useHashParamBoolean("hidemenu");
+  const [tabIndex, setTabIndex] = useHashParamInt("tab", 0);
   const toggleMenu = useCallback(() => {
     sethideMenu(!hideMenu);
   }, [hideMenu, sethideMenu]);
@@ -28,6 +35,7 @@ export const App: React.FC = () => {
 
   const ButtonTabsToggle = (
     <IconButton
+      style={{zIndex:10}}
       aria-label="options"
       variant="ghost"
       onClick={toggleMenu}
@@ -46,12 +54,12 @@ export const App: React.FC = () => {
           <Spacer />
           <Show breakpoint="(min-width: 200px)">{ButtonTabsToggle}</Show>
         </HStack>
-        <PanelMain />
+        {tabIndex === 1 ? <PanelUpload /> : <PanelMain />}
       </>
     );
   }
   return (
-    <Tabs>
+    <Tabs index={tabIndex} onChange={setTabIndex}>
       <TabList>
         <Tab>
           <ViewIcon /> &nbsp; Inputs
