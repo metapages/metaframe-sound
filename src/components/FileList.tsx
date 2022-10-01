@@ -118,6 +118,7 @@ const FileLineItem: React.FC<{
   const clickDownload = useCallback(async () => {
     const fileWithBlob = await getFileBlob(file.name);
     const fileBlob = fileWithBlob.file!;
+
     let objectUrl: string | undefined;
     try {
       objectUrl = URL.createObjectURL(fileBlob);
