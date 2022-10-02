@@ -1,8 +1,8 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useCallback } from "react";
 import {
+  Button,
   HStack,
   IconButton,
-  Show,
   Table,
   TableContainer,
   Tbody,
@@ -28,26 +28,22 @@ import prettyBytes from "pretty-bytes";
 import { FileBlob } from "/@/components/FileBlob";
 import { Options } from "/@/components/PanelOptions";
 import { useHashParamJson } from "@metapages/hash-query";
-import { useSendOutput } from "../hooks/useSendOutputs";
+import { useSendOutput } from "/@/hooks/useSendOutput";
+import { useSendOutputs } from "/@/hooks/useSendOutputs";
 
 export const FileList: React.FC = () => {
   const [options] = useHashParamJson<Options>("options", {});
   const syncCachedFiles = useFileStore((state) => state.syncCachedFiles);
   const files = useFileStore((state) => state.files);
+  const sendFiles = useSendOutputs();
 
   useEffect(() => {
     syncCachedFiles();
   }, [syncCachedFiles]);
 
-  const onClick = useCallback(async (fileBlob: FileBlob) => {
-    // const file = await getFile(fileBlob.name);
-    // if (file) {
-    //   if (!fileBlob.urlEncoded) {
-    //     fileBlob.urlEncoded = URL.createObjectURL(file);
-    //   }
-    //   setVideoSrc({ src: fileBlob.urlEncoded!, type: file.type });
-    // }
-  }, []);
+  const sendAllFiles = useCallback(() => {
+    sendFiles(files.map((f) => f.name));
+  }, [files, sendFiles]);
 
   return (
     <HStack>
@@ -61,7 +57,13 @@ export const FileList: React.FC = () => {
               {options.showSizes ? <Th>Size</Th> : undefined}
               {options.showPreviews ? <Th>Preview</Th> : undefined}
               {options.showTimeArrived ? <Th>Arrived</Th> : undefined}
-              <Th>Send</Th>
+              <Th>
+                Send{" "}
+                <Button onClick={sendAllFiles} variant="outline">
+                  All
+                  <ArrowForwardIcon />{" "}
+                </Button>{" "}
+              </Th>
               {options.showDeleteButton ? <Th>Delete</Th> : undefined}
               {options.showLocalCache ? <Th>Local cache</Th> : undefined}
               {options.hideDownloads ? undefined : <Th>Download</Th>}
@@ -69,14 +71,7 @@ export const FileList: React.FC = () => {
           </Thead>
           <Tbody>
             {files.map((file, i) => (
-              <FileLineItem
-                key={i}
-                options={options}
-                file={file}
-                onClick={async () => {
-                  onClick(file);
-                }}
-              />
+              <FileLineItem key={i} options={options} file={file} />
             ))}
           </Tbody>
         </Table>
@@ -87,9 +82,8 @@ export const FileList: React.FC = () => {
 
 const FileLineItem: React.FC<{
   file: FileBlob;
-  onClick: () => void;
   options: Options;
-}> = ({ file, options, onClick }) => {
+}> = ({ file, options }) => {
   const { cached, name } = file;
   const send = useSendOutput(file.name);
   const deleteFile = useFileStore((state) => state.deleteFile);
