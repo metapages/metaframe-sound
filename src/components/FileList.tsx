@@ -45,6 +45,11 @@ export const FileList: React.FC = () => {
     sendFiles(files.map((f) => f.name));
   }, [files, sendFiles]);
 
+  files.sort(
+    (f1, f2) =>
+      (f2.arrived?.getTime() ?? 0) - (f1.arrived?.getTime() ?? 0)
+  )
+
   return (
     <HStack>
       <TableContainer>

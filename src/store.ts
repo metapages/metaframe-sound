@@ -60,11 +60,22 @@ export const useFileStore = create<FilesState>((set, get) => {
         // TODO this doesn't account for TypedArrays
         // TODO need a generic "convert to File" function
         if (!(fileBlob.file instanceof Blob)) {
-          fileBlob.file = new File([typeof(fileBlob.value) === "string" ? fileBlob.value : JSON.stringify(fileBlob.value)], filename, {
-            type: typeof(fileBlob.value) === "string" ? "text/plain" : "application/json",
-          });
+          fileBlob.file = new File(
+            [
+              typeof fileBlob.value === "string"
+                ? fileBlob.value
+                : JSON.stringify(fileBlob.value),
+            ],
+            filename,
+            {
+              type:
+                typeof fileBlob.value === "string"
+                  ? "text/plain"
+                  : "application/json",
+            }
+          );
         } else {
-          const blob :Blob = fileBlob.file;
+          const blob: Blob = fileBlob.file;
           fileBlob.file = new File([blob], filename, {
             type: blob.type,
           });
