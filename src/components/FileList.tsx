@@ -1,237 +1,102 @@
-import { useEffect, useCallback } from "react";
+import { CheckIcon, EditIcon, WarningIcon } from "@chakra-ui/icons";
 import {
-  Button,
-  HStack,
+  Box,
   IconButton,
   Table,
   TableContainer,
   Tbody,
   Td,
-  Textarea,
-  Th,
-  Thead,
   Tr,
-  useToast,
+  useDisclosure,
+  VStack,
 } from "@chakra-ui/react";
-import { useFileStore } from "../store";
-import {
-  ArrowDownIcon,
-  ArrowForwardIcon,
-  CheckIcon,
-  CopyIcon,
-  DeleteIcon,
-  DownloadIcon,
-  QuestionIcon,
-  WarningTwoIcon,
-} from "@chakra-ui/icons";
 import prettyBytes from "pretty-bytes";
+import { useCallback, useEffect } from "react";
+
+import { useFileList } from "../hooks/useFileList";
+import { useFileStore } from "../store";
+import { FormUrlList } from "./FormUrlList";
 import { FileBlob } from "/@/components/FileBlob";
-import { Options } from "/@/components/PanelOptions";
-import { useHashParamJson } from "@metapages/hash-query";
-import { useSendOutput } from "/@/hooks/useSendOutput";
 import { useSendOutputs } from "/@/hooks/useSendOutputs";
 
 export const FileList: React.FC = () => {
-  const [options] = useHashParamJson<Options>("options", {});
-  const syncCachedFiles = useFileStore((state) => state.syncCachedFiles);
   const files = useFileStore((state) => state.files);
+  const deleteFile = useFileStore((state) => state.deleteFile);
+  const addFile = useFileStore((state) => state.addFile);
+  const { isOpen, onClose, onOpen } = useDisclosure();
+
   const sendFiles = useSendOutputs();
+  const [filesFromUrl] = useFileList();
 
   useEffect(() => {
-    if (options.showLocalCache) {
-      syncCachedFiles();
+    // remove first
+    files.forEach((existingFile) => {
+      if (!filesFromUrl.find((f) => f === existingFile.url)) {
+        deleteFile(existingFile.url);
+      }
+    });
+    // then add new
+    const added: string[] = [];
+    filesFromUrl.forEach((f: string) => {
+      if (!files.find((existingFile) => existingFile.url === f)) {
+        addFile({ url: f });
+        added.push(f);
+      }
+    });
+    if (added.length > 0) {
+      sendFiles(added);
     }
-  }, [options, syncCachedFiles]);
+  }, [filesFromUrl, files, deleteFile, addFile, sendFiles]);
 
-  const sendAllFiles = useCallback(() => {
-    sendFiles(files.map((f) => f.name));
-  }, [files, sendFiles]);
-
-  files.sort(
-    (f1, f2) => (f2.arrived?.getTime() ?? 0) - (f1.arrived?.getTime() ?? 0)
-  );
-
-  return (
-    <HStack>
+  return isOpen ? (
+    <>
+      <br />
+      <FormUrlList onClose={onClose} />
+    </>
+  ) : (
+    <VStack justifyContent="space-between" alignItems="flex-start">
       <TableContainer>
         <Table variant="simple">
-          {/* <TableCaption>Inputs</TableCaption> */}
-          <Thead>
-            <Tr>
-              {options.pausedOutputs ? <Th></Th> : undefined}
-              <Th>Name</Th>
-              {options.showSizes ? <Th>Size</Th> : undefined}
-              {options.showPreviews ? <Th>Preview</Th> : undefined}
-              {options.showTimeArrived ? <Th>Arrived</Th> : undefined}
-              <Th>
-                Send{" "}
-                <Button onClick={sendAllFiles} variant="outline">
-                  All
-                  <ArrowForwardIcon />{" "}
-                </Button>{" "}
-              </Th>
-              {options.showDeleteButton ? <Th>Delete</Th> : undefined}
-              {options.showLocalCache ? <Th>Local cache</Th> : undefined}
-              {options.hideDownloads ? undefined : <Th>Download</Th>}
-            </Tr>
-          </Thead>
           <Tbody>
             {files.map((file, i) => (
-              <FileLineItem key={i} options={options} file={file} />
+              <FileLineItem key={i} file={file} />
             ))}
           </Tbody>
         </Table>
       </TableContainer>
-    </HStack>
+      <Box alignSelf="flex-start" p={2}>
+        <IconButton
+          variant="outline"
+          border={3}
+          icon={<EditIcon />}
+          onClick={onOpen}
+          aria-label={""}
+        />
+      </Box>
+    </VStack>
   );
 };
 
 const FileLineItem: React.FC<{
   file: FileBlob;
-  options: Options;
-}> = ({ file, options }) => {
-  const { cached, name } = file;
-  const send = useSendOutput(file.name);
-  const deleteFile = useFileStore((state) => state.deleteFile);
-  const cacheFile = useFileStore((state) => state.cacheFile);
-  const getFileBlob = useFileStore((state) => state.getFileBlob);
-  const copyFileToClipboard = useFileStore(
-    (state) => state.copyFileToClipboard
-  );
-  const toast = useToast();
-
-  const copyClipboard = useCallback(async () => {
-    await copyFileToClipboard(file.name);
-    toast({
-      position: "top",
-      title: "Copied to clipboard",
-      status: "success",
-      duration: 3000,
-      isClosable: true,
-    });
-  }, [file, copyFileToClipboard, toast]);
-
-  const refreshSize = useCallback(() => {
-    getFileBlob(file.name);
-  }, [file.name, getFileBlob]);
-
-  const clickDownload = useCallback(async () => {
-    const fileWithBlob = await getFileBlob(file.name);
-    const fileBlob = fileWithBlob.file!;
-
-    let objectUrl: string | undefined;
-    try {
-      objectUrl = URL.createObjectURL(fileBlob);
-      const link = document.createElement("a");
-      link.download = fileBlob.name;
-      link.href = objectUrl;
-      link.click();
-      setTimeout(() => {
-        URL.revokeObjectURL(objectUrl!);
-      }, 1);
-    } catch (err) {
-      console.error(err);
-    }
-  }, [getFileBlob, file.name]);
+}> = ({ file }) => {
+  const { url } = file;
 
   return (
     <Tr>
-      {options.pausedOutputs ? (
-        <Td>
-          <WarningTwoIcon color="red" /> Paused outputs
-        </Td>
-      ) : undefined}
-
-      <Td>{name}</Td>
-
-      {options.showSizes ? (
-        <Td>
-          {file.size !== undefined ? (
-            prettyBytes(file.size)
-          ) : (
-            <IconButton
-              aria-label="refresh size"
-              icon={<QuestionIcon />}
-              onClick={refreshSize}
-            />
-          )}
-        </Td>
-      ) : undefined}
-
-      {/* The field '_s:true' means the file is a serialized blob
-            so we cannot copy binary  */}
-      {options.showPreviews ? (
-        <Td>
-          {file.value === undefined ||
-          file.value instanceof Blob ||
-          file.value?._s === true ? (
-            "binary"
-          ) : (
-            <>
-              <Textarea
-                readOnly
-                resize="both"
-                value={
-                  file.value
-                    ? JSON.stringify(file.value).substring(0, 100000)
-                    : undefined
-                }
-              />
-              <IconButton
-                onClick={copyClipboard}
-                aria-label="copy"
-                icon={<CopyIcon />}
-              />
-            </>
-          )}
-        </Td>
-      ) : undefined}
-
-      {options.showTimeArrived ? (
-        <Td>{file?.arrived?.toLocaleTimeString() ?? ""}</Td>
-      ) : undefined}
-
+      <Td>{url}</Td>
+      <Td>{file.size !== undefined ? prettyBytes(file.size) : "none"}</Td>
       <Td>
-        <IconButton
-          aria-label="send"
-          onClick={send}
-          icon={<ArrowForwardIcon />}
-        />
+        {file.sent ? (
+          <CheckIcon color="green" />
+        ) : file.error ? (
+          <IconButton
+            aria-label="status"
+            onClick={() => {}}
+            icon={<WarningIcon color="red" />}
+          />
+        ) : undefined}
       </Td>
-
-      {options.showDeleteButton ? (
-        <Td>
-          <IconButton
-            aria-label="delete"
-            onClick={() => deleteFile(name)}
-            icon={<DeleteIcon />}
-          />
-        </Td>
-      ) : undefined}
-
-      {options.showLocalCache ? (
-        <Td>
-          {cached ? (
-            <CheckIcon color="black" />
-          ) : (
-            <IconButton
-              aria-label="cache"
-              onClick={() => cacheFile(file)}
-              icon={<ArrowDownIcon />}
-            />
-          )}
-        </Td>
-      ) : undefined}
-
-      {options.hideDownloads ? undefined : (
-        <Td>
-          <IconButton
-            aria-label="download"
-            icon={<DownloadIcon />}
-            onClick={clickDownload}
-          />
-        </Td>
-      )}
     </Tr>
   );
 };

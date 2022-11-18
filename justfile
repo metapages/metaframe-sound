@@ -91,7 +91,7 @@ build BASE="": _ensure_npm_modules (_tsc "--build") (_browser_client_build BASE)
 
 # Rebuild the browser assets on changes, but do not serve
 watch:
-    watchexec -w src -w tsconfig.json -w package.json -w vite.config.ts -- just _browser_assets_build
+    watchexec -w src -w tsconfig.json -w package.json -w vite.config.ts -- just _browser_client_build
 
 # Watch and serve browser client. Can't use vite to serve: https://github.com/vitejs/vite/issues/2754
 serve: _mkcert build

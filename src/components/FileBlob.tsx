@@ -1,10 +1,9 @@
 export interface FileBlob {
-  name: string;
+  url: string;
   value?: any;
   file?: File;
-  urlEncoded?: string;
-  // type?:string;//??
-  cached: boolean;
+  cached?: boolean;
   size?: number;
-  arrived?: Date;
+  error?: string;
+  sent?: boolean;
 }

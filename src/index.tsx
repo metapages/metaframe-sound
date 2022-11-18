@@ -7,7 +7,7 @@ import { App } from "./App";
 // for caching blobs
 localForage.config({
   driver: localForage.INDEXEDDB,
-  name: "metaframe-inputs",
+  name: "metaframe-download",
   version: 1.0,
   storeName: "files", // Should be alphanumeric, with underscores.
   description: "Cached files",

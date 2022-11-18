@@ -9,6 +9,7 @@ import {
 interface FilesState {
   files: FileBlob[];
   addFile: (file: FileBlob) => void;
+  updateFile: (file: FileBlob) => void;
   setFiles: (files: FileBlob[]) => void;
   /**
    * This returns the FileBlob (which you may already have)
@@ -16,12 +17,7 @@ interface FilesState {
    * This could be maybe clearer.
    */
   getFileBlob: (filename: string) => Promise<FileBlob>;
-  copyFileToClipboard: (filename: string) => Promise<void>;
-  cacheFile: (file: FileBlob) => void;
-  syncCachedFiles: () => void;
-
   deleteFile: (filename: string) => Promise<void>;
-  deleteAllFiles: () => Promise<void>;
 
   error: string | null;
   setError: (error: string | null) => void;
@@ -32,25 +28,48 @@ export const useFileStore = create<FilesState>((set, get) => {
     files: [],
     setFiles: (files: FileBlob[]) => set((state) => ({ files })),
 
-    getFileBlob: async (filename: string) => {
-      const fileBlob = get().files.find((file) => file.name === filename);
+    getFileBlob: async (url: string) => {
+      const fileBlob = get().files.find((file) => file.url === url);
       if (!fileBlob) {
         throw new Error("File not found");
+      }
+
+      if (fileBlob.error) {
+        return fileBlob;
       }
 
       let changed = false;
 
       if (fileBlob.cached && fileBlob.value === undefined) {
         const valueFromCache: any | undefined | null =
-          await localForage.getItem(fileBlob.name);
+          await localForage.getItem(fileBlob.url);
         fileBlob.cached = true;
         fileBlob.value = valueFromCache;
+        fileBlob.sent = false;
+        changed = true;
+      }
+
+      // Ok, now download
+      if (fileBlob.value === undefined && !fileBlob.file) {
+        const res = await fetch(fileBlob.url);
+        if (res.ok) {
+          const blob = await res.blob();
+          const tokens = fileBlob.url.split("/");
+          fileBlob.file = new File([blob], tokens[tokens.length - 1]);
+        } else {
+          fileBlob.error = res.statusText;
+        }
         changed = true;
       }
 
       // maybe we just uploaded this
       if (fileBlob.value === undefined && fileBlob.file) {
         fileBlob.value = await possiblySerializeValueToDataref(fileBlob.file);
+        changed = true;
+      }
+
+      if (fileBlob.file && fileBlob.size === undefined) {
+        fileBlob.size = fileBlob.file.size;
         changed = true;
       }
 
@@ -66,7 +85,7 @@ export const useFileStore = create<FilesState>((set, get) => {
                 ? fileBlob.value
                 : JSON.stringify(fileBlob.value),
             ],
-            filename,
+            url,
             {
               type:
                 typeof fileBlob.value === "string"
@@ -76,7 +95,7 @@ export const useFileStore = create<FilesState>((set, get) => {
           );
         } else {
           const blob: Blob = fileBlob.file;
-          fileBlob.file = new File([blob], filename, {
+          fileBlob.file = new File([blob], url, {
             type: blob.type,
           });
         }
@@ -93,69 +112,30 @@ export const useFileStore = create<FilesState>((set, get) => {
       return fileBlob;
     },
 
-    copyFileToClipboard: async (filename: string) => {
-      const blob = await get().getFileBlob(filename);
-      navigator.clipboard.writeText(blob.value);
-    },
-
-    cacheFile: async (file: FileBlob) => {
-      if (file.cached) {
-        return;
-      }
-
-      if (!file.value) {
-        throw `cacheFile failed, not file File not found for: ${file.name}`;
-      }
-
-      try {
-        await localForage.setItem(file.name, file.value);
-        file.cached = true;
-        // trigger updates
-        set((state) => ({
-          files: [...get().files],
-        }));
-      } catch (err) {
-        console.log(err);
-      }
-    },
-
-    syncCachedFiles: async () => {
-      const keys = await localForage.keys();
-
-      const files = get().files;
-      const newFiles: FileBlob[] = [];
-      keys.forEach((key) => {
-        if (!files.find((f) => f.name === key)) {
-          newFiles.push({
-            name: key,
-            cached: true,
-          });
-        }
-      });
-
-      set((state) => ({
-        files: [...files, ...newFiles],
-      }));
-    },
-
     addFile: async (file: FileBlob) => {
       set((state) => ({
         // overwrite if already exists
-        files: [
-          ...state.files.filter((f) => f.name !== file.name),
-          { ...file },
-        ],
+        files: [...state.files.filter((f) => f.url !== file.url), { ...file }],
       }));
     },
 
-    deleteFile: async (filename: string) => {
+    updateFile: async (file: FileBlob) => {
+      set((state) => ({
+        // overwrite if already exists
+        files: state.files.find((f) => f.url === file.url)
+          ? [...state.files.filter((f) => f.url !== file.url), { ...file }]
+          : state.files,
+      }));
+    },
+
+    deleteFile: async (url: string) => {
       const files = [...get().files];
-      const fileBlob = get().files.find((file) => file.name === filename);
+      const fileBlob = get().files.find((file) => file.url === url);
 
       if (fileBlob) {
         files.splice(files.indexOf(fileBlob), 1);
         try {
-          await localForage.removeItem(filename);
+          await localForage.removeItem(url);
         } catch (err) {
           console.log(err);
         }
@@ -164,22 +144,6 @@ export const useFileStore = create<FilesState>((set, get) => {
       set((state) => ({
         files,
       }));
-    },
-
-    deleteAllFiles: async () => {
-      get().files.forEach(async (file) => {
-        try {
-          await localForage.removeItem(file.name);
-        } catch (err) {
-          console.log(err);
-        }
-      });
-
-      set((state) => ({
-        files: [],
-      }));
-
-      return Promise.resolve();
     },
 
     error: null,
