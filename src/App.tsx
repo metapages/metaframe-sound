@@ -2,6 +2,7 @@ import "/@/app.css";
 
 import { HamburgerIcon, InfoIcon, ViewIcon } from "@chakra-ui/icons";
 import {
+  Center,
   HStack,
   IconButton,
   Show,
@@ -26,13 +27,16 @@ export const App: React.FC = () => {
   }, [hideMenu, sethideMenu]);
 
   const ButtonTabsToggle = (
-    <IconButton
-      style={{ zIndex: 10 }}
-      aria-label="options"
-      variant="ghost"
-      onClick={toggleMenu}
-      icon={<HamburgerIcon />}
-    />
+    <Center>
+      <IconButton
+        p={3}
+        style={{ zIndex: 10 }}
+        aria-label="options"
+        variant="ghost"
+        onClick={toggleMenu}
+        icon={<HamburgerIcon />}
+      />
+    </Center>
   );
 
   if (hideMenu) {

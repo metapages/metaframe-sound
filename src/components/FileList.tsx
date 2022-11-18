@@ -10,6 +10,7 @@ import {
   useDisclosure,
   VStack,
 } from "@chakra-ui/react";
+import { useHashParamBoolean } from "@metapages/hash-query";
 import prettyBytes from "pretty-bytes";
 import { useCallback, useEffect } from "react";
 
@@ -20,6 +21,7 @@ import { FileBlob } from "/@/components/FileBlob";
 import { useSendOutputs } from "/@/hooks/useSendOutputs";
 
 export const FileList: React.FC = () => {
+  const [hideMenu] = useHashParamBoolean("hidemenu");
   const files = useFileStore((state) => state.files);
   const deleteFile = useFileStore((state) => state.deleteFile);
   const addFile = useFileStore((state) => state.addFile);
@@ -64,15 +66,17 @@ export const FileList: React.FC = () => {
           </Tbody>
         </Table>
       </TableContainer>
-      <Box alignSelf="flex-start" p={2}>
-        <IconButton
-          variant="outline"
-          border={3}
-          icon={<EditIcon />}
-          onClick={onOpen}
-          aria-label={""}
-        />
-      </Box>
+      {hideMenu ? null : (
+        <Box alignSelf="flex-start" p={2}>
+          <IconButton
+            variant="outline"
+            border={3}
+            icon={<EditIcon />}
+            onClick={onOpen}
+            aria-label={""}
+          />
+        </Box>
+      )}
     </VStack>
   );
 };
