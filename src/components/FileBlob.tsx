@@ -1,9 +1,11 @@
+import { Howl } from "howler";
+
 export interface FileBlob {
+  label: string;
   url: string;
-  value?: any;
-  file?: File;
-  cached?: boolean;
-  size?: number;
+  loaded?: boolean;
+  playing?: boolean;
+  playAgain?: boolean;
   error?: string;
-  sent?: boolean;
+  sound: Howl;
 }

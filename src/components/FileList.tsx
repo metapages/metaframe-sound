@@ -1,9 +1,10 @@
-import { CheckIcon, EditIcon, WarningIcon } from "@chakra-ui/icons";
+import { EditIcon } from "@chakra-ui/icons";
 import {
   Box,
   IconButton,
   Table,
   TableContainer,
+  Tag,
   Tbody,
   Td,
   Tr,
@@ -11,44 +12,33 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { useHashParamBoolean } from "@metapages/hash-query";
-import prettyBytes from "pretty-bytes";
 import { useCallback, useEffect } from "react";
+import { FaPlay } from "react-icons/fa";
+import { HiVolumeUp } from "react-icons/hi";
 
-import { useFileList } from "../hooks/useFileList";
+import { useFileListConfig } from "../hooks/useFileListConfig";
 import { useFileStore } from "../store";
 import { FormUrlList } from "./FormUrlList";
 import { FileBlob } from "/@/components/FileBlob";
-import { useSendOutputs } from "/@/hooks/useSendOutputs";
+import { useMetaframe } from '@metapages/metaframe-hook';
 
 export const FileList: React.FC = () => {
   const [hideMenu] = useHashParamBoolean("hidemenu");
   const files = useFileStore((state) => state.files);
-  const deleteFile = useFileStore((state) => state.deleteFile);
-  const addFile = useFileStore((state) => state.addFile);
   const { isOpen, onClose, onOpen } = useDisclosure();
+  const playFile = useFileStore((state) => state.playFile);
 
-  const sendFiles = useSendOutputs();
-  const [filesFromUrl] = useFileList();
-
+  const metaframeBlob = useMetaframe();
   useEffect(() => {
-    // remove first
-    files.forEach((existingFile) => {
-      if (!filesFromUrl.find((f) => f === existingFile.url)) {
-        deleteFile(existingFile.url);
-      }
-    });
-    // then add new
-    const added: string[] = [];
-    filesFromUrl.forEach((f: string) => {
-      if (!files.find((existingFile) => existingFile.url === f)) {
-        addFile({ url: f });
-        added.push(f);
-      }
-    });
-    if (added.length > 0) {
-      sendFiles(added);
+    if (!metaframeBlob.metaframe) {
+      return;
     }
-  }, [filesFromUrl, files, deleteFile, addFile, sendFiles]);
+    return metaframeBlob.metaframe.onInput("play", playFile);
+  }, [metaframeBlob.metaframe, playFile])
+
+
+  // adding the files to the store is done in the hook
+  useFileListConfig();
 
   return isOpen ? (
     <>
@@ -84,23 +74,26 @@ export const FileList: React.FC = () => {
 const FileLineItem: React.FC<{
   file: FileBlob;
 }> = ({ file }) => {
-  const { url } = file;
+  const { url, label, playing, loaded } = file;
+  const playFile = useFileStore((state) => state.playFile);
+  const onClick = useCallback(() => {
+    playFile(label);
+  }, [label, playFile]);
 
   return (
     <Tr>
-      <Td>{url}</Td>
-      <Td>{file.size !== undefined ? prettyBytes(file.size) : "none"}</Td>
       <Td>
-        {file.sent ? (
-          <CheckIcon color="green" />
-        ) : file.error ? (
-          <IconButton
-            aria-label="status"
-            onClick={() => {}}
-            icon={<WarningIcon color="red" />}
-          />
-        ) : undefined}
+        <IconButton
+          aria-label={"play"}
+          onClick={onClick}
+          disabled={!loaded}
+          icon={playing ? <HiVolumeUp color="green" /> : <FaPlay />}
+        />{" "}
       </Td>
+      <Td>
+        <Tag>{label}</Tag>
+      </Td>
+      <Td>{url}</Td>
     </Tr>
   );
 };

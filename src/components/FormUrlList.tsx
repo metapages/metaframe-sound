@@ -1,50 +1,68 @@
-import { useCallback } from "react";
+import { AddIcon, DeleteIcon } from "@chakra-ui/icons";
 import {
-  IconButton,
-  VStack,
+  Button,
+  Heading,
   HStack,
+  IconButton,
   Input,
   InputGroup,
   Spacer,
-  Button,
-  Heading,
+  Table,
+  TableContainer,
+  Tbody,
+  Td,
+  Th,
+  Thead,
+  Tr,
+  VStack,
 } from "@chakra-ui/react";
-import { AddIcon, DeleteIcon } from "@chakra-ui/icons";
-import { FieldArray, Form, ErrorMessage, Formik } from "formik";
+import { FieldArray, Form, Formik } from "formik";
+import { useCallback } from "react";
 import * as yup from "yup";
-import { useFileList } from "../hooks/useFileList";
+
+import {
+  FileListConfig,
+  FileListItem,
+  useFileListConfig,
+} from "../hooks/useFileListConfig";
+
+const validationSchemaFile = yup.object({
+  url: yup.string(),
+  label: yup.string(),
+});
 
 const validationSchema = yup.object({
-  files: yup.array().of(yup.string()),
+  files: yup.array().of(validationSchemaFile),
 });
 
 interface FormType extends yup.InferType<typeof validationSchema> {}
 
-export const FormUrlList: React.FC<{onClose:() => void}> = ({onClose}) => {
-  const [files, setFiles] = useFileList();
+export const FormUrlList: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const [filesConfig, setFilesConfig] = useFileListConfig();
 
   const onSubmit = useCallback(
     (values: FormType) => {
       const maybeFiles = values.files;
-      const notEmpty: string[] = [];
+      const notEmpty: FileListItem[] = [];
       if (maybeFiles) {
         maybeFiles.forEach((f) => {
           if (f) {
-            notEmpty.push(f);
+            notEmpty.push({ url: f.url || "", label: f.label || "" });
           }
         });
       }
-      setFiles(notEmpty);
+      const newConfig: FileListConfig = {
+        files: notEmpty,
+      };
+      setFilesConfig(newConfig);
       onClose();
     },
-    [setFiles, onClose]
+    [setFilesConfig, onClose]
   );
 
   return (
     <VStack width="100%" alignItems="flex-start">
-      <Heading size="sm">
-        Download URLs{" "}
-      </Heading>
+      <Heading size="sm">Sound clip URLs </Heading>
       <VStack
         justifyContent="flex-start"
         borderWidth="1px"
@@ -54,59 +72,78 @@ export const FormUrlList: React.FC<{onClose:() => void}> = ({onClose}) => {
         align="stretch"
       >
         <Formik
-          initialValues={{files}}
+          initialValues={{ files: filesConfig.files }}
           onSubmit={onSubmit}
           validationSchema={validationSchema}
         >
-          {({ values, handleSubmit }) => (
+          {({ values, handleChange }) => (
             <Form>
               <FieldArray name="files">
-                {({ remove, push, replace }) => (
+                {({ remove, push }) => (
                   <>
-                    {values.files.length > 0 &&
-                      values.files.map((filestring, index) => (
-                        <HStack key={index} width="100%" padding={1}>
-                          <InputGroup>
-                            <Input
-                              name={`files.${index}`}
-                              type="text"
-                              value={filestring ?? ""}
-                              onChange={(e) => {
-                                replace(index, e.target.value);
-                              }}
-                            />
-                            <ErrorMessage
-                              name={`files.${index}`}
-                              component="div"
-                              className="field-error"
-                            />
-                          </InputGroup>
-                          <Spacer />
+                    <TableContainer>
+                      <Table variant="simple">
+                        <Thead>
+                          <Tr>
+                            <Th>Playing</Th>
+                            <Th>Label</Th>
+                            <Th> URL</Th>
+                            <Th> </Th>
+                          </Tr>
+                        </Thead>
 
-                          <IconButton
-                            aria-label="delete module"
-                            icon={<DeleteIcon />}
-                            onClick={() => {
-                              remove(index);
-                              handleSubmit();
-                            }}
-                          />
-                        </HStack>
-                      ))}
-                    <br />
-
-                    <HStack>
-                      <Spacer />
+                        <Tbody>
+                          {values.files
+                            .sort((f1, f2) => f1.label.localeCompare(f2.label))
+                            .map((file, index) => (
+                              <Tr key={index}>
+                                <Td>Playing</Td>
+                                <Td>
+                                  <InputGroup>
+                                    <Input
+                                      name={`files[${index}].label`}
+                                      type="text"
+                                      value={file.label ?? ""}
+                                      onChange={handleChange}
+                                    />
+                                  </InputGroup>
+                                </Td>
+                                <Td>
+                                  <InputGroup>
+                                    <Input
+                                      name={`files[${index}].url`}
+                                      type="text"
+                                      value={file.url ?? ""}
+                                      onChange={handleChange}
+                                    />
+                                  </InputGroup>
+                                </Td>
+                                <Td>
+                                  <IconButton
+                                    aria-label="delete module"
+                                    icon={<DeleteIcon />}
+                                    onClick={() => {
+                                      remove(index);
+                                    }}
+                                  />
+                                </Td>
+                              </Tr>
+                            ))}
+                        </Tbody>
+                      </Table>
+                    </TableContainer>
+                    <HStack p={2}>
                       <IconButton
                         verticalAlign="top"
                         aria-label="add module"
                         icon={<AddIcon />}
                         size="md"
-                        onClick={() => push("")}
+                        onClick={() => push({ url: "", label: "" })}
                         mr="4"
                       />
 
-                      <Button type="submit" >Update</Button>
+                      <Button type="submit">Update</Button>
+                      <Spacer />
                     </HStack>
                   </>
                 )}

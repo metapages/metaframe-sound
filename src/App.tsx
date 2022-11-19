@@ -15,9 +15,10 @@ import {
 } from "@chakra-ui/react";
 import { useHashParamBoolean, useHashParamInt } from "@metapages/hash-query";
 import { useCallback } from "react";
+import { HiVolumeUp } from "react-icons/hi";
 
 import { PanelHelp } from "/@/components/PanelHelp";
-import { PanelMain } from "/@/components/PanelMain";
+import { FileList } from "/@/components/FileList";
 
 export const App: React.FC = () => {
   const [hideMenu, sethideMenu] = useHashParamBoolean("hidemenu");
@@ -50,7 +51,7 @@ export const App: React.FC = () => {
           <Spacer />
           <Show breakpoint="(min-width: 200px)">{ButtonTabsToggle}</Show>
         </HStack>
-        <PanelMain />
+        <FileList />
       </>
     );
   }
@@ -58,7 +59,7 @@ export const App: React.FC = () => {
     <Tabs index={tabIndex} onChange={setTabIndex}>
       <TabList>
         <Tab>
-          <ViewIcon /> &nbsp; Downloads
+          <HiVolumeUp /> &nbsp; Sounds
         </Tab>
         <Tab>
           <InfoIcon />
@@ -69,7 +70,7 @@ export const App: React.FC = () => {
 
       <TabPanels>
         <TabPanel>
-          <PanelMain />
+          <FileList />
         </TabPanel>
 
         <TabPanel>

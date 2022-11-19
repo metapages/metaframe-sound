@@ -1,24 +1,15 @@
 import create from "zustand";
-import localForage from "localforage";
 import { FileBlob } from "/@/components/FileBlob";
-import {
-  possiblyDeserializeDatarefToValue,
-  possiblySerializeValueToDataref,
-} from "@metapages/metapage";
 
 interface FilesState {
   files: FileBlob[];
   addFile: (file: FileBlob) => void;
   updateFile: (file: FileBlob) => void;
-  setFiles: (files: FileBlob[]) => void;
-  /**
-   * This returns the FileBlob (which you may already have)
-   * but with the File field populated.
-   * This could be maybe clearer.
-   */
-  getFileBlob: (filename: string) => Promise<FileBlob>;
   deleteFile: (filename: string) => Promise<void>;
-
+  playFile: (label: string) => Promise<void>;
+  onEnd: (label: string) => Promise<void>;
+  onLoad: (label: string) => Promise<void>;
+  deleteAll: () => void;
   error: string | null;
   setError: (error: string | null) => void;
 }
@@ -26,123 +17,125 @@ interface FilesState {
 export const useFileStore = create<FilesState>((set, get) => {
   return {
     files: [],
-    setFiles: (files: FileBlob[]) => set((state) => ({ files })),
 
-    getFileBlob: async (url: string) => {
-      const fileBlob = get().files.find((file) => file.url === url);
-      if (!fileBlob) {
-        throw new Error("File not found");
+    playFile: async (label: string) => {
+      const file = get().files.find((file) => file.label === label);
+      if (!file) {
+        console.error(`Cannot playFile("${label}"): file not found`);
+        return;
+      }
+      if (!file.loaded) {
+        return;
       }
 
-      if (fileBlob.error) {
-        return fileBlob;
-      }
-
-      let changed = false;
-
-      if (fileBlob.cached && fileBlob.value === undefined) {
-        const valueFromCache: any | undefined | null =
-          await localForage.getItem(fileBlob.url);
-        fileBlob.cached = true;
-        fileBlob.value = valueFromCache;
-        fileBlob.sent = false;
-        changed = true;
-      }
-
-      // Ok, now download
-      if (fileBlob.value === undefined && !fileBlob.file) {
-        const res = await fetch(fileBlob.url);
-        if (res.ok) {
-          const blob = await res.blob();
-          const tokens = fileBlob.url.split("/");
-          fileBlob.file = new File([blob], tokens[tokens.length - 1]);
-        } else {
-          fileBlob.error = res.statusText;
+      if (file.playing) {
+        file.playAgain = true;
+      } else {
+        if (file.loaded) {
+          file.sound.play();
         }
-        changed = true;
       }
-
-      // maybe we just uploaded this
-      if (fileBlob.value === undefined && fileBlob.file) {
-        fileBlob.value = await possiblySerializeValueToDataref(fileBlob.file);
-        changed = true;
+      file.playing = true;
+      // update
+      const index = get().files.findIndex((f) => file.label === f.label);
+      if (index < 0) {
+        return;
       }
+      const updateFiles = [...get().files];
+      updateFiles[index] = { ...file };
 
-      if (fileBlob.file && fileBlob.size === undefined) {
-        fileBlob.size = fileBlob.file.size;
-        changed = true;
-      }
+      set((state) => ({
+        files: updateFiles,
+      }));
+    },
 
-      // convert to file
-      if (fileBlob.value !== undefined && !fileBlob.file) {
-        fileBlob.file = possiblyDeserializeDatarefToValue(fileBlob.value);
-        // TODO this doesn't account for TypedArrays
-        // TODO need a generic "convert to File" function
-        if (!(fileBlob.file instanceof Blob)) {
-          fileBlob.file = new File(
-            [
-              typeof fileBlob.value === "string"
-                ? fileBlob.value
-                : JSON.stringify(fileBlob.value),
-            ],
-            url,
-            {
-              type:
-                typeof fileBlob.value === "string"
-                  ? "text/plain"
-                  : "application/json",
-            }
-          );
+    onEnd: async (label: string) => {
+      const file = get().files.find((file) => file.label === label);
+      if (file) {
+        if (file.playAgain) {
+          file.sound.play();
+          file.playAgain = false;
         } else {
-          const blob: Blob = fileBlob.file;
-          fileBlob.file = new File([blob], url, {
-            type: blob.type,
-          });
+          file.playing = false;
         }
+        // update
+        const index = get().files.findIndex((f) => file.label === f.label);
+        if (index < 0) {
+          return;
+        }
+        const updateFiles = [...get().files];
+        updateFiles[index] = { ...file };
 
-        fileBlob.size = fileBlob.file.size;
-        changed = true;
+        set((state) => ({
+          files: updateFiles,
+        }));
       }
+    },
+    onLoad: async (label: string) => {
+      const file = get().files.find((file) => file.label === label);
+      if (file) {
+        file.loaded = true;
+        if (file.playing) {
+          file.sound.play();
+        }
+        // update
 
-      // everything is deserialized etc
-      if (changed) {
-        // trigger updates
-        get().addFile(fileBlob);
+        const index = get().files.findIndex((f) => file.label === f.label);
+        if (index < 0) {
+          return;
+        }
+        const updateFiles = [...get().files];
+        updateFiles[index] = { ...file };
+
+        set((state) => ({
+          files: updateFiles,
+        }));
       }
-      return fileBlob;
     },
 
     addFile: async (file: FileBlob) => {
       set((state) => ({
         // overwrite if already exists
-        files: [...state.files.filter((f) => f.url !== file.url), { ...file }],
+        files: [
+          ...state.files.filter((f) => f.url !== file.url),
+          { ...file },
+        ].sort((f1, f2) => f1.label.localeCompare(f2.label)),
       }));
     },
 
+    // only update if it already exists
     updateFile: async (file: FileBlob) => {
+      const index = get().files.findIndex((f) => file.label === f.label);
+      if (index < 0) {
+        return;
+      }
+      const updateFiles = [...get().files];
+      updateFiles[index] = { ...file };
+
       set((state) => ({
-        // overwrite if already exists
-        files: state.files.find((f) => f.url === file.url)
-          ? [...state.files.filter((f) => f.url !== file.url), { ...file }]
-          : state.files,
+        files: updateFiles,
       }));
     },
 
-    deleteFile: async (url: string) => {
+    deleteFile: async (label: string) => {
       const files = [...get().files];
-      const fileBlob = get().files.find((file) => file.url === url);
+      const fileBlob = get().files.find((file) => file.label === label);
 
       if (fileBlob) {
+        fileBlob.sound.unload();
         files.splice(files.indexOf(fileBlob), 1);
-        try {
-          await localForage.removeItem(url);
-        } catch (err) {
-          console.log(err);
-        }
       }
 
       set((state) => ({
         files,
+      }));
+    },
+
+    deleteAll: () => {
+      const files = [...get().files];
+      files.forEach((f) => f.sound.unload());
+      set((state) => ({
+        files: [],
       }));
     },
 

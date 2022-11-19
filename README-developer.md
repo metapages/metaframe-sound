@@ -12,7 +12,7 @@ It has everything you need to get a connectable [metaframe](https://metapages.or
    - Fork
    - Create new repository
       1) Clone the new repository and go there in the terminal
-      2) `git remote add upstream git@github.com:metapages/metaframe-download.git`
+      2) `git remote add upstream git@github.com:metapages/metaframe-sound.git`
       3) `git fetch upstream`
       4) `git checkout -b upstream upstream/main`
       5) `git branch -d main`
