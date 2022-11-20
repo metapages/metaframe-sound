@@ -20,7 +20,7 @@ import { useFileListConfig } from "../hooks/useFileListConfig";
 import { useFileStore } from "../store";
 import { FormUrlList } from "./FormUrlList";
 import { FileBlob } from "/@/components/FileBlob";
-import { useMetaframe } from '@metapages/metaframe-hook';
+import { useMetaframe } from "@metapages/metaframe-hook";
 
 export const FileList: React.FC = () => {
   const [hideMenu] = useHashParamBoolean("hidemenu");
@@ -34,8 +34,7 @@ export const FileList: React.FC = () => {
       return;
     }
     return metaframeBlob.metaframe.onInput("play", playFile);
-  }, [metaframeBlob.metaframe, playFile])
-
+  }, [metaframeBlob.metaframe, playFile]);
 
   // adding the files to the store is done in the hook
   useFileListConfig();
@@ -76,9 +75,14 @@ const FileLineItem: React.FC<{
 }> = ({ file }) => {
   const { url, label, playing, loaded } = file;
   const playFile = useFileStore((state) => state.playFile);
+  const stopFile = useFileStore((state) => state.stopFile);
   const onClick = useCallback(() => {
-    playFile(label);
-  }, [label, playFile]);
+    if (playing) {
+      stopFile(label);
+    } else {
+      playFile(label);
+    }
+  }, [playing, label, playFile, stopFile]);
 
   return (
     <Tr>

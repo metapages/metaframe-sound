@@ -7,6 +7,7 @@ interface FilesState {
   updateFile: (file: FileBlob) => void;
   deleteFile: (filename: string) => Promise<void>;
   playFile: (label: string) => Promise<void>;
+  stopFile: (label: string) => Promise<void>;
   onEnd: (label: string) => Promise<void>;
   onLoad: (label: string) => Promise<void>;
   deleteAll: () => void;
@@ -47,6 +48,36 @@ export const useFileStore = create<FilesState>((set, get) => {
       set((state) => ({
         files: updateFiles,
       }));
+    },
+
+    stopFile: async (label: string) => {
+      const file = get().files.find((file) => file.label === label);
+      if (!file) {
+        console.error(`Cannot playFile("${label}"): file not found`);
+        return;
+      }
+      if (!file.loaded) {
+        return;
+      }
+
+      let changed = false;
+      if (file.playing || file.playAgain) {
+        file.playing = false;
+        file.playAgain = false;
+        changed = true;
+      }
+
+      file?.sound.stop();
+
+      // update
+      if (changed) {
+        const index = get().files.findIndex((f) => file.label === f.label);
+        const updateFiles = [...get().files];
+        updateFiles[index] = { ...file };
+        set((state) => ({
+          files: updateFiles,
+        }));
+      }
     },
 
     onEnd: async (label: string) => {
